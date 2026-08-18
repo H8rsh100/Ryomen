@@ -419,7 +419,8 @@
   <section class="scene is-active" data-scene="hero" data-hud-state="CURSED ENERGY: IMMEASURABLE" data-hud-domain="SEALED">
     <div class="eye__stick">
       <div class="eye__bg tilt" data-tilt="0.4">
-        <img class="hero__still" src="./img/sukuna_still.png" alt="Sukuna — dormant"
+        <img class="hero__still" src="./img/sukuna_landing.jpg" alt="Sukuna — dormant"
+             style="object-position:50% 40%;"
              onerror="this.style.background='radial-gradient(circle at 50% 45%,#2a0a1a,#0a0208)';this.removeAttribute('src');">
         <div class="eye__overlay"></div>
         <div class="eye__tint"></div>
@@ -443,8 +444,8 @@
   <section class="scene" data-scene="eye" data-hud-state="TRUE FORM: EMERGING" data-hud-domain="SEALED">
     <div class="eye__stick" id="eyeStick">
       <div class="eye__bg tilt" data-tilt="0.3">
-        <video class="eye__video" id="eyeVid" muted playsinline preload="auto"
-               poster="./img/sukuna_still.png" src="./sukuna_reveal.mp4"></video>
+        <img class="eye__video" id="eyeVid" src="./img/malo_ine.gif" alt="Sukuna awakening"
+             style="object-fit:cover;object-position:50% 40%;width:100%;height:100%;transform:scale(1.06);">
         <div class="eye__overlay"></div>
         <div class="eye__tint"></div>
         <div class="eye__awake" id="eyeAwake" aria-hidden="true">
@@ -467,8 +468,8 @@
       <div class="drop__stage" id="dropStage">
         <div class="drop__world" id="dropWorld">
           <div class="drop__sky"></div>
-          <video class="drop__video" id="sealVid" muted playsinline preload="auto"
-                 poster="./img/sukuna_still.png" src="./sukuna_domain.mp4"></video>
+          <img class="drop__video" id="sealVid" src="./img/malo_ine.gif" alt="Sukuna — domain expansion"
+               style="object-fit:cover;object-position:50% 30%;width:100%;height:100%;transform:scale(1.05);pointer-events:none;">
           <div class="drop__intro" id="dropIntro">
             <span class="ik">呪臨御嶽</span>
             <h2>Malevolent Shrine. <em>No survivors.</em></h2>
@@ -487,7 +488,8 @@
             <i class="drop__ring"></i><i class="drop__ring"></i><i class="drop__ring"></i><i class="drop__ring"></i>
           </div>
           <div class="drop__splash" id="dropSplash">
-            <img src="./img/domain_splash.png" alt="Malevolent Shrine — Domain Expansion"
+            <img src="./img/sukuna_pose.jpg" alt="Malevolent Shrine — Domain Expansion"
+                 style="object-fit:contain;max-height:80vh;"
                  onerror="this.style.display='none';this.parentNode.insertAdjacentHTML('beforeend','<div style=&quot;font-family:Shippori Mincho,serif;font-size:clamp(40px,9vw,120px);color:transparent;-webkit-text-stroke:1.5px rgba(220,20,60,.7);text-shadow:0 0 50px rgba(106,13,173,.5);&quot;>呪臨御嶽</div>');">
           </div>
           <canvas class="drop__particles" id="dropParticles"></canvas>
@@ -502,9 +504,11 @@
   <!-- SCENE 3 — DISMANTLE & CLEAVE (hover reveal) -->
   <section class="scene" data-scene="veil" data-hud-state="SLASH: ABSOLUTE" data-hud-domain="KING OF CURSES">
     <div class="veil" id="veil">
-      <img class="veil__img veil__img--under" src="./img/sukuna_true.png" alt="Sukuna — true form"
+      <img class="veil__img veil__img--under" src="./img/sukuna_true.webp" alt="Sukuna — true form"
+           style="object-fit:cover;object-position:50% 50%;transform:scale(1.15);"
            onerror="this.style.background='radial-gradient(circle at 50% 34%,#3a0a1a,#1a0208 70%)';this.style.opacity='1';this.removeAttribute('src');">
-      <img style="transform: scale(1.3);" class="veil__img veil__img--top" id="veilTop" src="./img/sukuna_dormant.png"
+      <img class="veil__img veil__img--top" id="veilTop" src="./img/yuji_sukuna.jpg"
+           style="transform:scale(1.4);object-fit:cover;object-position:50% 50%;"
            onerror="this.style.background='radial-gradient(circle at 50% 36%,#0a0612,#05060c 72%)';this.style.opacity='1';this.removeAttribute('src');">
       <div class="veil__dark"></div>
 
@@ -529,7 +533,7 @@
   <section class="scene scene--outro" data-scene="outro" data-hud-state="THE KING OF CURSES" data-hud-domain="MALEVOLENT">
     <footer class="outro">
       <div class="outro__bg" aria-hidden="true">
-        <img src="./img/sukuna_portrait.png" alt="" onerror="this.remove();">
+        <img src="./img/sukuna_pose.jpg" alt="" style="object-position:50% 20%;" onerror="this.remove();">
         <div class="outro__glow"></div>
       </div>
       <span class="k">両面宿儺</span>
