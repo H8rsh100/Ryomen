@@ -863,32 +863,23 @@
       power>0.7
     );
   }
-  var eyeMarks=[{at:0.30,power:0.55,sound:false,done:false},{at:0.66,power:0.82,sound:true,done:false},{at:0.93,power:1,sound:true,done:false}];
-  function resetEyeMarks(){ for(var i=0;i<eyeMarks.length;i++) eyeMarks[i].done=false; }
-  eyeVid.addEventListener('timeupdate',function(){
-    var d=eyeVid.duration||1, p=eyeVid.currentTime/d;
-    for(var i=0;i<eyeMarks.length;i++){ var m=eyeMarks[i]; if(!m.done && p>=m.at){ m.done=true; eyeArc(m.power,m.sound); } }
-  });
-  setInterval(function(){ if(sceneName()==='eye' && eyeVid.currentTime>0.5 && Math.random()<0.5 && !document.hidden) eyeArc(0.35,false); },3200);
-
   function showAwake(on){ eyeAwake.style.opacity=on?1:0; eyeAwake.classList.toggle('on',!!on); }
   showAwake(false);
 
   hooks.eye={
     enter:function(dir){
-      sizeEyeBolt(); resetEyeMarks();
+      sizeEyeBolt();
       if(dir<0){
-        try{ eyeVid.pause(); eyeVid.currentTime=eyeVid.duration||0; }catch(e){}
         showAwake(true);
       } else {
         showAwake(false);
         if(!reduced) humPad(0.5,1.8,false);
-        playForward(eyeVid,function(){ showAwake(true); eyeArc(1,true); });
+        setTimeout(function(){ showAwake(true); eyeArc(1,true); },1800);
       }
     },
     reverse:function(done){
       showAwake(false);
-      playReverse(eyeVid,done);
+      done&&done();
     }
   };
 
@@ -1014,13 +1005,13 @@
       tween(0,0.9,1.6,0.7,setSeal);
       if(convEmit) clearInterval(convEmit);
       convEmit=setInterval(function(){ if(!reduced) emitConverge(0.8,3); },90);
-      playForward(sealVid,function(){
+      setTimeout(function(){
         if(convEmit){ clearInterval(convEmit); convEmit=null; }
         tween(0.9,0,0.5,0,setSeal);
         detonated=true; detonate();
         tween(0,1,1.0,0.15,setSplash);
         tween(1,0,0.9,0.35,setGlyphs);
-      });
+      },2200);
     }
 
     hooks.domain={
@@ -1032,7 +1023,7 @@
         if(convEmit){ clearInterval(convEmit); convEmit=null; }
         killDomainTweens();
         setSplash(0); setGlyphs(0); setSeal(0); resetDet(); detonated=false;
-        playReverse(sealVid,function(){ setIntro(1); done&&done(); });
+        setIntro(1); done&&done();
       }
     };
     domainResetState();
