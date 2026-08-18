@@ -468,8 +468,8 @@
       <div class="drop__stage" id="dropStage">
         <div class="drop__world" id="dropWorld">
           <div class="drop__sky"></div>
-          <img class="drop__video" id="sealVid" src="./img/malo_ine.gif" alt="Sukuna — domain expansion"
-               style="object-fit:cover;object-position:50% 30%;width:100%;height:100%;transform:scale(1.05);pointer-events:none;">
+          <video class="drop__video" id="sealVid" muted playsinline preload="auto"
+                 poster="./img/sukuna_landing.jpg" src="./img/malovelent.mp4"></video>
           <div class="drop__intro" id="dropIntro">
             <span class="ik">呪臨御嶽</span>
             <h2>Malevolent Shrine. <em>No survivors.</em></h2>
@@ -488,7 +488,7 @@
             <i class="drop__ring"></i><i class="drop__ring"></i><i class="drop__ring"></i><i class="drop__ring"></i>
           </div>
           <div class="drop__splash" id="dropSplash">
-            <img src="./img/sukuna_pose.jpg" alt="Malevolent Shrine — Domain Expansion"
+            <img src="./img/sukuna_true.webp" alt="Malevolent Shrine — Domain Expansion"
                  style="object-fit:contain;max-height:80vh;"
                  onerror="this.style.display='none';this.parentNode.insertAdjacentHTML('beforeend','<div style=&quot;font-family:Shippori Mincho,serif;font-size:clamp(40px,9vw,120px);color:transparent;-webkit-text-stroke:1.5px rgba(220,20,60,.7);text-shadow:0 0 50px rgba(106,13,173,.5);&quot;>呪臨御嶽</div>');">
           </div>
@@ -504,7 +504,7 @@
   <!-- SCENE 3 — DISMANTLE & CLEAVE (hover reveal) -->
   <section class="scene" data-scene="veil" data-hud-state="SLASH: ABSOLUTE" data-hud-domain="KING OF CURSES">
     <div class="veil" id="veil">
-      <img class="veil__img veil__img--under" src="./img/sukuna_true.webp" alt="Sukuna — true form"
+      <img class="veil__img veil__img--under" src="./img/sukuna_underneath.jpg" alt="Sukuna — true form"
            style="object-fit:cover;object-position:50% 50%;transform:scale(1.15);"
            onerror="this.style.background='radial-gradient(circle at 50% 34%,#3a0a1a,#1a0208 70%)';this.style.opacity='1';this.removeAttribute('src');">
       <img class="veil__img veil__img--top" id="veilTop" src="./img/yuji_sukuna.jpg"
@@ -1005,13 +1005,13 @@
       tween(0,0.9,1.6,0.7,setSeal);
       if(convEmit) clearInterval(convEmit);
       convEmit=setInterval(function(){ if(!reduced) emitConverge(0.8,3); },90);
-      setTimeout(function(){
+      playForward(sealVid,function(){
         if(convEmit){ clearInterval(convEmit); convEmit=null; }
         tween(0.9,0,0.5,0,setSeal);
         detonated=true; detonate();
         tween(0,1,1.0,0.15,setSplash);
         tween(1,0,0.9,0.35,setGlyphs);
-      },2200);
+      });
     }
 
     hooks.domain={
@@ -1023,7 +1023,7 @@
         if(convEmit){ clearInterval(convEmit); convEmit=null; }
         killDomainTweens();
         setSplash(0); setGlyphs(0); setSeal(0); resetDet(); detonated=false;
-        setIntro(1); done&&done();
+        playReverse(sealVid,function(){ setIntro(1); done&&done(); });
       }
     };
     domainResetState();
