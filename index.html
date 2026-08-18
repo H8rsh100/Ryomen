@@ -216,10 +216,10 @@
   .drop__glow{position:absolute;left:50%;top:50%;z-index:7;width:80vw;height:56vh;pointer-events:none;
     transform:translate(-50%,-50%);opacity:0;filter:blur(8px);
     background:radial-gradient(ellipse at center,rgba(220,20,60,.5),rgba(106,13,173,.18) 42%,transparent 72%);}
-  .drop__splash{position:absolute;left:50%;bottom:5vh;z-index:8;width:min(86vw,860px);max-height:92vh;
-    transform:translate(-50%,34px) scale(.92);opacity:0;pointer-events:none;will-change:transform,opacity,filter;
+  .drop__splash{position:absolute;left:0;top:0;z-index:8;width:100%;height:100%;
+    transform:translateY(34px) scale(.92);opacity:0;pointer-events:none;will-change:transform,opacity,filter;
     filter:drop-shadow(0 34px 70px rgba(0,0,0,.8)) drop-shadow(0 0 36px rgba(220,20,60,.4));}
-  .drop__splash img{display:block;width:100%;height:auto;max-height:92vh;object-fit:contain;}
+  .drop__splash img{display:block;width:100%;height:100%;object-fit:cover;}
   .drop__particles{position:absolute;inset:0;z-index:6;pointer-events:none;width:100%;height:100%;mix-blend-mode:screen;}
   .drop__bolt{position:absolute;inset:0;z-index:10;pointer-events:none;width:100%;height:100%;mix-blend-mode:screen;}
   .drop__flash{position:absolute;inset:0;z-index:11;pointer-events:none;opacity:0;mix-blend-mode:screen;
@@ -229,7 +229,7 @@
   @media (max-width:640px){
     .drop__glyphs .g3,.drop__glyphs .g4{display:none;}
     .drop__seal-g{font-size:clamp(120px,40vw,240px);}
-    .drop__splash{width:114vw;bottom:8vh;}
+    .drop__splash{width:100%;height:100%;}
   }
 
   /* ---------- DISMANTLE & CLEAVE (hover iris reveal) ---------- */
@@ -294,12 +294,12 @@
     radial-gradient(70% 55% at 50% 16%,rgba(106,13,173,.20),transparent 68%),
     radial-gradient(60% 45% at 50% 96%,rgba(220,20,60,.16),transparent 70%),
     radial-gradient(ellipse at center,#1a0a0a 0%,var(--ink) 72%);}
-  .outro__bg img{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);min-width:100%;min-height:100%;
-    width:auto;height:120%;object-fit:cover;object-position:50% 22%;opacity:.16;
+  .outro__bg img{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);min-width:100%;min-height:100%;
+    width:auto;height:120%;object-fit:cover;object-position:50% 50%;opacity:.16;
     filter:grayscale(.15) brightness(.72) saturate(1.15);
-    -webkit-mask-image:radial-gradient(ellipse 60% 60% at 50% 42%,#000 20%,transparent 78%);
-            mask-image:radial-gradient(ellipse 60% 60% at 50% 42%,#000 20%,transparent 78%);}
-  .outro__bg::after{content:'鬼';position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);z-index:1;
+    -webkit-mask-image:radial-gradient(ellipse 70% 70% at 50% 50%,#000 20%,transparent 78%);
+            mask-image:radial-gradient(ellipse 70% 70% at 50% 50%,#000 20%,transparent 78%);}
+  .outro__bg::after{content:'鬼';position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:1;
     font-family:var(--kanji);font-weight:800;font-size:clamp(220px,42vw,600px);line-height:1;white-space:nowrap;
     color:transparent;-webkit-text-stroke:1px rgba(220,20,60,.05);}
   .outro__glow{position:absolute;left:50%;top:44%;width:64vw;height:44vh;transform:translate(-50%,-50%);z-index:1;
@@ -343,7 +343,7 @@
   .eye__video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 42%;
     transform:scale(1.06);will-change:transform,filter;backface-visibility:hidden;}
   .drop__video{position:absolute;inset:0;z-index:2;width:100%;height:100%;object-fit:cover;
-    object-position:50% 30%;transform:scale(1.05);pointer-events:none;backface-visibility:hidden;}
+    object-position:50% 50%;transform:scale(1.05);pointer-events:none;backface-visibility:hidden;}
   .hero__still{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 42%;
     transform:scale(1.06);}
 
@@ -975,7 +975,7 @@
       seal.style.transform='translate(-50%,-50%) scale('+(0.7+power*0.34).toFixed(3)+')'; }
     function setSplash(a){ a=clamp(a,0,1);
       splash.style.opacity=a.toFixed(3);
-      splash.style.transform='translate(-50%,'+((1-a)*34).toFixed(1)+'px) scale('+(0.92+0.08*a).toFixed(3)+')';
+      splash.style.transform='translateY('+((1-a)*34).toFixed(1)+'px) scale('+(0.92+0.08*a).toFixed(3)+')';
       splash.style.filter='drop-shadow(0 34px 70px rgba(0,0,0,.8)) drop-shadow(0 0 '+(30+a*46).toFixed(0)+'px rgba(220,20,60,.5))'; }
 
     var dTweens=[];
