@@ -15,41 +15,7 @@
 - 🗡️ **Dismantle & Cleave Interactive Reveal**: Real-time cursor radial gradient alpha masking and holographic 3D tilt ability cards.
 - 🎮 **Multi-Input Deck Controller**: Keyboard arrows, smooth wheel delta-locking, mobile touch gestures, and progress dots.
 
----
-
-## 🚀 How to Run Locally
-
-Because this project is built with vanilla web technologies, you don't need any complex build steps.
-
-### Option 1: Python (Built-in)
-```bash
-# In the project directory
-python -m http.server 8080
-```
-Open **`http://localhost:8080/`** in your browser.
-
-### Option 2: Node.js (npx serve / live-server)
-```bash
-npx serve .
-# or
-npx live-server
-```
-
-### Option 3: VS Code / IDE
-Install the **Live Server** extension, right-click `index.html`, and select **"Open with Live Server"**.
-
----
-
-## 🌐 Deploy to GitHub Pages (Free Live URL)
-
-1. Push this repository to GitHub.
-2. Go to **Repository Settings** $\rightarrow$ **Pages** (on the left sidebar).
-3. Under **Build and deployment** $\rightarrow$ **Branch**, select `main` and folder `/ (root)`.
-4. Click **Save**.
-5. Within 1-2 minutes, your live link will be available at:  
-   `https://<your-username>.github.io/<repo-name>/`
-
----
+--- 
 
 ## 🛠️ Technology Stack
 

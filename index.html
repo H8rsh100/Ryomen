@@ -406,6 +406,7 @@
 <!-- HUD -->
 <div class="hud hud--top">
   <span>NODE // <b>CURSE.SYS</b></span>
+  <span id="hudAudio" style="pointer-events:auto;cursor:pointer;user-select:none;transition:color .2s;" title="Click to enable sound">AUDIO // <b id="hudAudioVal">CLICK TO UNMUTE 🔇</b></span>
   <span id="hudClock">--:--:--</span>
 </div>
 <div class="hud hud--bottom">
@@ -562,8 +563,76 @@
   var hooks = {};
 
   var userInteracted=false;
-  ['pointerdown','touchstart','keydown','wheel'].forEach(function(ev){
-    addEventListener(ev,function(){userInteracted=true;},{once:true,passive:true});});
+  var actx=null, masterComp=null, masterGain=null;
+
+  function updateAudioHUD(online){
+    var el=document.getElementById('hudAudioVal');
+    if(!el) return;
+    if(online){
+      el.textContent='ONLINE 🔊';
+      el.style.color='var(--crimson-hi)';
+      el.style.textShadow='0 0 10px rgba(255,51,85,0.8)';
+    } else {
+      el.textContent='CLICK TO UNMUTE 🔇';
+      el.style.color='';
+      el.style.textShadow='';
+    }
+  }
+
+  function AC(){
+    try{
+      if(!actx){
+        var AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if(!AudioCtx) return null;
+        actx = new AudioCtx();
+
+        // Master dynamics compressor to prevent clipping and deliver punchy cinema loudness
+        masterComp = actx.createDynamicsCompressor();
+        masterComp.threshold.setValueAtTime(-14, actx.currentTime);
+        masterComp.knee.setValueAtTime(10, actx.currentTime);
+        masterComp.ratio.setValueAtTime(8, actx.currentTime);
+        masterComp.attack.setValueAtTime(0.003, actx.currentTime);
+        masterComp.release.setValueAtTime(0.18, actx.currentTime);
+
+        masterGain = actx.createGain();
+        masterGain.gain.setValueAtTime(1.15, actx.currentTime);
+
+        masterGain.connect(masterComp);
+        masterComp.connect(actx.destination);
+      }
+      if(actx.state==='suspended'){
+        actx.resume().then(function(){ updateAudioHUD(true); }).catch(function(){});
+      } else if(actx.state==='running'){
+        updateAudioHUD(true);
+      }
+    }catch(e){}
+    return actx;
+  }
+
+  function unlockAudio(){
+    userInteracted=true;
+    var c=AC();
+    if(c && c.state==='suspended'){
+      c.resume().then(function(){ updateAudioHUD(true); }).catch(function(){});
+    } else if(c && c.state==='running'){
+      updateAudioHUD(true);
+    }
+  }
+
+  // Wake up audio context on ANY user input
+  ['pointerdown','touchstart','keydown','wheel','click','mousedown'].forEach(function(ev){
+    window.addEventListener(ev,unlockAudio,{passive:true});
+    document.addEventListener(ev,unlockAudio,{passive:true});
+  });
+
+  var hudAudioBtn=document.getElementById('hudAudio');
+  if(hudAudioBtn){
+    hudAudioBtn.addEventListener('click',function(e){
+      e.stopPropagation();
+      unlockAudio();
+      humPad(0.7,1.8,true);
+    });
+  }
 
   var lastInteract=performance.now();
   function bump(){ lastInteract=performance.now(); }
@@ -571,84 +640,182 @@
     addEventListener(ev,bump,{passive:true});});
 
   /* ================= WEB-AUDIO CURSED-ENERGY SYNTHS ================= */
-  var actx=null;
-  function AC(){ try{ actx=actx||new (window.AudioContext||window.webkitAudioContext)();
-    if(actx.state==='suspended') actx.resume(); }catch(e){} return actx; }
-
   function humPad(power,dur,ping){
-    if(!userInteracted) return; var c=AC(); if(!c) return;
-    power=power||0.7; dur=dur||2.2; var now=c.currentTime;
+    if(!userInteracted) return;
+    var c=AC(); if(!c || !masterGain) return;
+    power=power||0.8; dur=dur||2.2; var now=c.currentTime;
     try{
-      var base=42+power*18;
+      // Sub-bass layer (deep chest rumble, 54Hz - 74Hz)
+      var base=54+power*20;
       var o1=c.createOscillator(); o1.type='sine'; o1.frequency.value=base;
-      var o1b=c.createOscillator(); o1b.type='sine'; o1b.frequency.value=base*1.5;
       var g1=c.createGain(); g1.gain.setValueAtTime(0.0001,now);
-      g1.gain.exponentialRampToValueAtTime(0.15*power,now+0.4);
+      g1.gain.exponentialRampToValueAtTime(0.42*power,now+0.35);
       g1.gain.exponentialRampToValueAtTime(0.0001,now+dur);
-      o1.connect(g1); o1b.connect(g1); g1.connect(c.destination);
-      o1.start(now); o1b.start(now); o1.stop(now+dur); o1b.stop(now+dur);
-      var o2=c.createOscillator(); o2.type='triangle';
-      o2.frequency.setValueAtTime(1800,now);
-      o2.frequency.exponentialRampToValueAtTime(4200+power*1400,now+dur*0.72);
-      var bp=c.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=3800; bp.Q.value=2.2;
+      o1.connect(g1); g1.connect(masterGain);
+      o1.start(now); o1.stop(now+dur);
+
+      // Mid-harmonic cursed drone (warm 110Hz - 165Hz triangle with lowpass - heard clearly on laptops & phones)
+      var oMid=c.createOscillator(); oMid.type='triangle'; oMid.frequency.value=base*2.02;
+      var fMid=c.createBiquadFilter(); fMid.type='lowpass'; fMid.frequency.value=480;
+      var gMid=c.createGain(); gMid.gain.setValueAtTime(0.0001,now);
+      gMid.gain.exponentialRampToValueAtTime(0.28*power,now+0.4);
+      gMid.gain.exponentialRampToValueAtTime(0.0001,now+dur*0.95);
+      oMid.connect(fMid); fMid.connect(gMid); gMid.connect(masterGain);
+      oMid.start(now); oMid.stop(now+dur);
+
+      // High cursed shimmer (eerie unearthly frequency sweep)
+      var o2=c.createOscillator(); o2.type='sawtooth';
+      o2.frequency.setValueAtTime(800,now);
+      o2.frequency.exponentialRampToValueAtTime(2400+power*800,now+dur*0.7);
+      var bp=c.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=1800; bp.Q.value=3.5;
       var g2=c.createGain(); g2.gain.setValueAtTime(0.0001,now);
-      g2.gain.exponentialRampToValueAtTime(0.032*power,now+0.5);
+      g2.gain.exponentialRampToValueAtTime(0.12*power,now+0.3);
       g2.gain.exponentialRampToValueAtTime(0.0001,now+dur);
-      o2.connect(bp); bp.connect(g2); g2.connect(c.destination);
+      o2.connect(bp); bp.connect(g2); g2.connect(masterGain);
       o2.start(now); o2.stop(now+dur);
+
       if(ping) softPing(power);
     }catch(e){}
   }
+
   function softPing(power){
-    var c=AC(); if(!c) return; power=power||1; var now=c.currentTime;
+    var c=AC(); if(!c || !masterGain) return; power=power||1; var now=c.currentTime;
     try{
-      [1100,1650].forEach(function(f,i){
+      [880,1320,1760].forEach(function(f,i){
         var o=c.createOscillator(); o.type='sine'; o.frequency.value=f;
         var g=c.createGain(); g.gain.setValueAtTime(0.0001,now);
-        g.gain.exponentialRampToValueAtTime((0.12/(i+1))*power,now+0.012);
-        g.gain.exponentialRampToValueAtTime(0.0001,now+1.5);
-        o.connect(g); g.connect(c.destination); o.start(now); o.stop(now+1.5);
+        g.gain.exponentialRampToValueAtTime((0.28/(i+1))*power,now+0.015);
+        g.gain.exponentialRampToValueAtTime(0.0001,now+1.6);
+        o.connect(g); g.connect(masterGain); o.start(now); o.stop(now+1.6);
       });
     }catch(e){}
   }
-  function domainBoom(){
-    if(!userInteracted) return; var c=AC(); if(!c) return; var now=c.currentTime, sr=c.sampleRate;
+
+  function lightningZap(power){
+    if(!userInteracted) return;
+    var c=AC(); if(!c || !masterGain) return;
+    power=power||1; var now=c.currentTime, sr=c.sampleRate;
     try{
-      var o=c.createOscillator(); o.type='sine';
-      o.frequency.setValueAtTime(100,now); o.frequency.exponentialRampToValueAtTime(25,now+1.5);
-      var g=c.createGain(); g.gain.setValueAtTime(0.0001,now);
-      g.gain.exponentialRampToValueAtTime(0.95,now+0.05); g.gain.exponentialRampToValueAtTime(0.0001,now+1.9);
-      o.connect(g); g.connect(c.destination); o.start(now); o.stop(now+1.9);
-      var n=(sr*1.1)|0, b=c.createBuffer(1,n,sr), d=b.getChannelData(0);
-      for(var i=0;i<n;i++){var t=i/n; d[i]=(Math.random()*2-1)*Math.pow(1-t,2.4);}
+      // Electrical arc crackle noise burst
+      var dur=0.28;
+      var n=(sr*dur)|0, b=c.createBuffer(1,n,sr), d=b.getChannelData(0);
+      for(var i=0;i<n;i++){
+        var t=i/n;
+        d[i]=(Math.random()*2-1)*Math.pow(1-t,1.8)*(Math.random()<0.35?1.4:0.6);
+      }
       var s=c.createBufferSource(); s.buffer=b;
-      var hp=c.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=2800;
-      var gg=c.createGain(); gg.gain.value=0.26; s.connect(hp); hp.connect(gg); gg.connect(c.destination); s.start(now+0.02);
-      [440,660,880,1320].forEach(function(f,i){
-        var bo=c.createOscillator(); bo.type='sine'; bo.frequency.value=f;
-        var bg=c.createGain(); bg.gain.setValueAtTime(0.0001,now+0.04);
-        bg.gain.exponentialRampToValueAtTime(0.10/(i+1),now+0.09);
-        bg.gain.exponentialRampToValueAtTime(0.0001,now+2.8);
-        bo.connect(bg); bg.connect(c.destination); bo.start(now+0.04); bo.stop(now+2.8);
-      });
-    }catch(e){}
-  }
-  function shing(intensity){
-    if(!userInteracted) return; var c=AC(); if(!c) return; intensity=intensity||1; var now=c.currentTime, sr=c.sampleRate;
-    try{
-      var n=(sr*0.5)|0, b=c.createBuffer(1,n,sr), d=b.getChannelData(0);
-      for(var i=0;i<n;i++){var t=i/n; d[i]=(Math.random()*2-1)*Math.pow(1-t,3);}
-      var s=c.createBufferSource(); s.buffer=b;
-      var bp=c.createBiquadFilter(); bp.type='bandpass'; bp.Q.value=6;
-      bp.frequency.setValueAtTime(4800,now); bp.frequency.exponentialRampToValueAtTime(2200,now+0.35);
+      var bp=c.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=1600; bp.Q.value=1.8;
       var g=c.createGain(); g.gain.setValueAtTime(0.0001,now);
-      g.gain.exponentialRampToValueAtTime(0.22*intensity,now+0.01); g.gain.exponentialRampToValueAtTime(0.0001,now+0.4);
-      s.connect(bp); bp.connect(g); g.connect(c.destination); s.start(now);
-      var o=c.createOscillator(); o.type='sine';
-      o.frequency.setValueAtTime(80,now); o.frequency.exponentialRampToValueAtTime(35,now+0.28);
+      g.gain.exponentialRampToValueAtTime(0.42*power,now+0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001,now+dur);
+      s.connect(bp); bp.connect(g); g.connect(masterGain); s.start(now);
+
+      // Low electric arc thud
+      var o=c.createOscillator(); o.type='sawtooth';
+      o.frequency.setValueAtTime(320,now);
+      o.frequency.exponentialRampToValueAtTime(60,now+0.18);
+      var f=c.createBiquadFilter(); f.type='lowpass'; f.frequency.value=380;
       var og=c.createGain(); og.gain.setValueAtTime(0.0001,now);
-      og.gain.exponentialRampToValueAtTime(0.5*intensity,now+0.02); og.gain.exponentialRampToValueAtTime(0.0001,now+0.45);
-      o.connect(og); og.connect(c.destination); o.start(now); o.stop(now+0.45);
+      og.gain.exponentialRampToValueAtTime(0.38*power,now+0.015);
+      og.gain.exponentialRampToValueAtTime(0.0001,now+0.22);
+      o.connect(f); f.connect(og); og.connect(masterGain);
+      o.start(now); o.stop(now+0.22);
+    }catch(e){}
+  }
+
+  function domainBoom(){
+    if(!userInteracted) return;
+    var c=AC(); if(!c || !masterGain) return;
+    var now=c.currentTime, sr=c.sampleRate;
+    try{
+      // Layer 1: Heavy punchy 808 kick (260Hz -> 48Hz)
+      var o=c.createOscillator(); o.type='sine';
+      o.frequency.setValueAtTime(260,now);
+      o.frequency.exponentialRampToValueAtTime(50,now+0.12);
+      o.frequency.exponentialRampToValueAtTime(28,now+2.0);
+      var g=c.createGain(); g.gain.setValueAtTime(0.0001,now);
+      g.gain.exponentialRampToValueAtTime(0.98,now+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001,now+2.2);
+      o.connect(g); g.connect(masterGain); o.start(now); o.stop(now+2.2);
+
+      // Layer 2: Low-mid body growl (triangle wave 140Hz -> 42Hz)
+      var o2=c.createOscillator(); o2.type='triangle';
+      o2.frequency.setValueAtTime(140,now);
+      o2.frequency.exponentialRampToValueAtTime(42,now+0.4);
+      var f2=c.createBiquadFilter(); f2.type='lowpass'; f2.frequency.value=350; f2.Q.value=3;
+      var g2=c.createGain(); g2.gain.setValueAtTime(0.0001,now);
+      g2.gain.exponentialRampToValueAtTime(0.75,now+0.04);
+      g2.gain.exponentialRampToValueAtTime(0.0001,now+1.6);
+      o2.connect(f2); f2.connect(g2); g2.connect(masterGain);
+      o2.start(now); o2.stop(now+1.6);
+
+      // Layer 3: Massive thunderous explosion shockwave (shaped white noise)
+      var n=(sr*1.6)|0, b=c.createBuffer(1,n,sr), d=b.getChannelData(0);
+      for(var i=0;i<n;i++){var t=i/n; d[i]=(Math.random()*2-1)*Math.pow(1-t,1.7);}
+      var s=c.createBufferSource(); s.buffer=b;
+      var lpNoise=c.createBiquadFilter(); lpNoise.type='lowpass';
+      lpNoise.frequency.setValueAtTime(1800,now);
+      lpNoise.frequency.exponentialRampToValueAtTime(220,now+1.2);
+      var gg=c.createGain(); gg.gain.setValueAtTime(0.0001,now);
+      gg.gain.exponentialRampToValueAtTime(0.65,now+0.02);
+      gg.gain.exponentialRampToValueAtTime(0.0001,now+1.6);
+      s.connect(lpNoise); lpNoise.connect(gg); gg.connect(masterGain);
+      s.start(now);
+
+      // Layer 4: Malevolent Shrine cursed bells (dissonant diminished chord)
+      [220, 311.13, 440, 622.25, 880].forEach(function(f,i){
+        var bo=c.createOscillator(); bo.type='sine'; bo.frequency.value=f;
+        var bg=c.createGain(); bg.gain.setValueAtTime(0.0001,now+0.03);
+        bg.gain.exponentialRampToValueAtTime((0.26/(i*0.6+1)),now+0.08);
+        bg.gain.exponentialRampToValueAtTime(0.0001,now+3.2);
+        bo.connect(bg); bg.connect(masterGain); bo.start(now+0.03); bo.stop(now+3.2);
+      });
+    }catch(e){}
+  }
+
+  function shing(intensity){
+    if(!userInteracted) return;
+    var c=AC(); if(!c || !masterGain) return;
+    intensity=intensity||1; var now=c.currentTime, sr=c.sampleRate;
+    try{
+      // Layer 1: Razor steel slice (high frequency chirp 4800Hz -> 1200Hz)
+      var oChirp=c.createOscillator(); oChirp.type='sawtooth';
+      oChirp.frequency.setValueAtTime(4800,now);
+      oChirp.frequency.exponentialRampToValueAtTime(1200,now+0.12);
+      var fChirp=c.createBiquadFilter(); fChirp.type='bandpass'; fChirp.frequency.value=2400; fChirp.Q.value=4;
+      var gChirp=c.createGain(); gChirp.gain.setValueAtTime(0.0001,now);
+      gChirp.gain.exponentialRampToValueAtTime(0.48*intensity,now+0.01);
+      gChirp.gain.exponentialRampToValueAtTime(0.0001,now+0.22);
+      oChirp.connect(fChirp); fChirp.connect(gChirp); gChirp.connect(masterGain);
+      oChirp.start(now); oChirp.stop(now+0.22);
+
+      // Layer 2: Resonant blade ring (singing metal steel)
+      [2400, 3600].forEach(function(freq){
+        var ringO=c.createOscillator(); ringO.type='sine'; ringO.frequency.value=freq;
+        var ringG=c.createGain(); ringG.gain.setValueAtTime(0.0001,now);
+        ringG.gain.exponentialRampToValueAtTime(0.24*intensity,now+0.015);
+        ringG.gain.exponentialRampToValueAtTime(0.0001,now+0.55);
+        ringO.connect(ringG); ringG.connect(masterGain); ringO.start(now); ringO.stop(now+0.55);
+      });
+
+      // Layer 3: Air slice noise whoosh
+      var n=(sr*0.35)|0, b=c.createBuffer(1,n,sr), d=b.getChannelData(0);
+      for(var i=0;i<n;i++){var t=i/n; d[i]=(Math.random()*2-1)*Math.pow(1-t,2.8);}
+      var s=c.createBufferSource(); s.buffer=b;
+      var bp=c.createBiquadFilter(); bp.type='bandpass'; bp.Q.value=5;
+      bp.frequency.setValueAtTime(3600,now); bp.frequency.exponentialRampToValueAtTime(1400,now+0.22);
+      var g=c.createGain(); g.gain.setValueAtTime(0.0001,now);
+      g.gain.exponentialRampToValueAtTime(0.42*intensity,now+0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001,now+0.32);
+      s.connect(bp); bp.connect(g); g.connect(masterGain); s.start(now);
+
+      // Layer 4: Punchy matter-cutting thud (180Hz -> 55Hz)
+      var o=c.createOscillator(); o.type='sine';
+      o.frequency.setValueAtTime(180,now); o.frequency.exponentialRampToValueAtTime(55,now+0.16);
+      var og=c.createGain(); og.gain.setValueAtTime(0.0001,now);
+      og.gain.exponentialRampToValueAtTime(0.65*intensity,now+0.015);
+      og.gain.exponentialRampToValueAtTime(0.0001,now+0.35);
+      o.connect(og); og.connect(masterGain); o.start(now); o.stop(now+0.35);
     }catch(e){}
   }
 
@@ -851,7 +1018,10 @@
   var eyeStorming=false;
   function eyeArc(power,withSound){
     if(reduced||eyeStorming||!eW) return; eyeStorming=true;
-    if(withSound) humPad(0.55*power,1.6+power,power>=1);
+    if(withSound){
+      lightningZap(power);
+      humPad(0.55*power,1.6+power,power>=1);
+    }
     var sx=eW*(0.14+Math.random()*0.72);
     var strikes=[buildStrike(sx,-20, sx+(Math.random()-0.5)*eW*0.18, eH*(0.52+Math.random()*0.3), eW*0.16)];
     if(power>0.65 && Math.random()<0.75){ var sx2=eW*(0.1+Math.random()*0.8);
@@ -874,6 +1044,7 @@
         showAwake(true);
       } else {
         showAwake(false);
+        unlockAudio();
         if(!reduced) humPad(0.5,1.8,false);
         setTimeout(function(){ showAwake(true); eyeArc(1,true); },1800);
       }
@@ -932,6 +1103,7 @@
 
     var detStorming=false;
     function detonateArcs(){
+      lightningZap(1.3);
       var strikes=[];
       for(var i=0;i<6;i++){ var ang=Math.random()*Math.PI*2, rad=Math.max(W,H)*0.6;
         var ex=W/2+Math.cos(ang)*rad, ey=H/2+Math.sin(ang)*rad;
@@ -999,6 +1171,7 @@
     function playDomain(){
       killDomainTweens();
       domainResetState(); size();
+      unlockAudio();
       if(!reduced) humPad(0.4,2,false);
       setIntro(1);
       tween(1,0,0.6,0.5,setIntro);
@@ -1132,7 +1305,7 @@
   function sceneName(){ return scenes[idx] ? scenes[idx].dataset.scene : ''; }
 
   scenes.forEach(function(s,i){ var d=document.createElement('i'); if(i===0) d.className='on';
-    d.addEventListener('click',function(){ jump(i); }); dotsWrap.appendChild(d); });
+    d.addEventListener('click',function(){ unlockAudio(); jump(i); }); dotsWrap.appendChild(d); });
 
   function syncUI(){
     navPrev.disabled = idx===0;
@@ -1161,26 +1334,27 @@
     if(dir<0 && ch && ch.reverse){ ch.reverse(proceed); }
     else { proceed(); }
   }
-  function go(dir){ activate(idx+dir,dir); }
-  function jump(i){ activate(i, i>idx?1:-1); }
+  function go(dir){ unlockAudio(); activate(idx+dir,dir); }
+  function jump(i){ unlockAudio(); activate(i, i>idx?1:-1); }
 
-  navNext.addEventListener('click',function(){ userInteracted=true; AC(); go(1); });
-  navPrev.addEventListener('click',function(){ userInteracted=true; AC(); go(-1); });
+  navNext.addEventListener('click',function(){ unlockAudio(); go(1); });
+  navPrev.addEventListener('click',function(){ unlockAudio(); go(-1); });
   addEventListener('keydown',function(e){
-    if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' '){ e.preventDefault(); userInteracted=true; go(1); }
-    else if(e.key==='ArrowLeft'||e.key==='PageUp'){ e.preventDefault(); userInteracted=true; go(-1); }
+    if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' '){ e.preventDefault(); unlockAudio(); go(1); }
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){ e.preventDefault(); unlockAudio(); go(-1); }
   });
   var wheelLock=0;
   addEventListener('wheel',function(e){
     var now=performance.now(); if(now-wheelLock<650) return;
     if(Math.abs(e.deltaY)<12) return; wheelLock=now;
+    unlockAudio();
     go(e.deltaY>0?1:-1);
   },{passive:true});
   var touchY=null;
-  addEventListener('touchstart',function(e){ touchY=e.touches[0].clientY; },{passive:true});
+  addEventListener('touchstart',function(e){ unlockAudio(); touchY=e.touches[0].clientY; },{passive:true});
   addEventListener('touchend',function(e){
     if(touchY==null) return; var dy=touchY-(e.changedTouches[0].clientY); touchY=null;
-    if(Math.abs(dy)>60) go(dy>0?1:-1);
+    if(Math.abs(dy)>60){ unlockAudio(); go(dy>0?1:-1); }
   },{passive:true});
 
   syncUI();
