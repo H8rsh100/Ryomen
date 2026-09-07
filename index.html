@@ -592,11 +592,29 @@
     return actx;
   }
 
-  function unlockAudio(){
+  var heroSoundPlayed=false;
+  function playHeroIntro(){
+    if(heroSoundPlayed || idx!==0) return;
+    heroSoundPlayed=true;
     userInteracted=true;
     var c=AC();
     if(c && c.state==='suspended'){
-      c.resume().catch(function(){});
+      c.resume().then(function(){ humPad(0.85,2.5,true); }).catch(function(){});
+    } else {
+      humPad(0.85,2.5,true);
+    }
+  }
+
+  function unlockAudio(){
+    var wasInteracted=userInteracted;
+    userInteracted=true;
+    var c=AC();
+    if(c && c.state==='suspended'){
+      c.resume().then(function(){
+        if(!wasInteracted && idx===0) playHeroIntro();
+      }).catch(function(){});
+    } else if(!wasInteracted && idx===0){
+      playHeroIntro();
     }
   }
 
@@ -945,10 +963,19 @@
       .to('#preIris',{opacity:0,duration:.35},'-=.12')
       .to(pre,{opacity:0,duration:.45,ease:'power2.inOut'},'-=.28')
       .set(pre,{display:'none'})
-      .from('[data-reveal]',{yPercent:60,opacity:0,duration:.9,ease:'power3.out',stagger:.09},'-=.25');
+      .from('[data-reveal]',{yPercent:60,opacity:0,duration:.9,ease:'power3.out',stagger:.09},'-=.25')
+      .add(function(){
+        playHeroIntro();
+      });
   } else {
     pre.style.display='none';
+    playHeroIntro();
   }
+
+  pre.addEventListener('click',function(){
+    unlockAudio();
+    playHeroIntro();
+  });
 
   /* ================= SHARED VIDEO PLAYBACK HELPERS ================= */
   function playForward(v, onEnd){
@@ -1008,6 +1035,12 @@
   }
   function showAwake(on){ eyeAwake.style.opacity=on?1:0; eyeAwake.classList.toggle('on',!!on); }
   showAwake(false);
+
+  hooks.hero={
+    enter:function(){
+      playHeroIntro();
+    }
+  };
 
   hooks.eye={
     enter:function(dir){
