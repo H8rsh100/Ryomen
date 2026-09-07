@@ -406,7 +406,6 @@
 <!-- HUD -->
 <div class="hud hud--top">
   <span>NODE // <b>CURSE.SYS</b></span>
-  <span id="hudAudio" style="pointer-events:auto;cursor:pointer;user-select:none;transition:color .2s;" title="Click to enable sound">AUDIO // <b id="hudAudioVal">CLICK TO UNMUTE 🔇</b></span>
   <span id="hudClock">--:--:--</span>
 </div>
 <div class="hud hud--bottom">
@@ -565,20 +564,6 @@
   var userInteracted=false;
   var actx=null, masterComp=null, masterGain=null;
 
-  function updateAudioHUD(online){
-    var el=document.getElementById('hudAudioVal');
-    if(!el) return;
-    if(online){
-      el.textContent='ONLINE 🔊';
-      el.style.color='var(--crimson-hi)';
-      el.style.textShadow='0 0 10px rgba(255,51,85,0.8)';
-    } else {
-      el.textContent='CLICK TO UNMUTE 🔇';
-      el.style.color='';
-      el.style.textShadow='';
-    }
-  }
-
   function AC(){
     try{
       if(!actx){
@@ -601,9 +586,7 @@
         masterComp.connect(actx.destination);
       }
       if(actx.state==='suspended'){
-        actx.resume().then(function(){ updateAudioHUD(true); }).catch(function(){});
-      } else if(actx.state==='running'){
-        updateAudioHUD(true);
+        actx.resume().catch(function(){});
       }
     }catch(e){}
     return actx;
@@ -613,26 +596,15 @@
     userInteracted=true;
     var c=AC();
     if(c && c.state==='suspended'){
-      c.resume().then(function(){ updateAudioHUD(true); }).catch(function(){});
-    } else if(c && c.state==='running'){
-      updateAudioHUD(true);
+      c.resume().catch(function(){});
     }
   }
 
-  // Wake up audio context on ANY user input
+  // Always keep audio ready and unlocked on any user input
   ['pointerdown','touchstart','keydown','wheel','click','mousedown'].forEach(function(ev){
     window.addEventListener(ev,unlockAudio,{passive:true});
     document.addEventListener(ev,unlockAudio,{passive:true});
   });
-
-  var hudAudioBtn=document.getElementById('hudAudio');
-  if(hudAudioBtn){
-    hudAudioBtn.addEventListener('click',function(e){
-      e.stopPropagation();
-      unlockAudio();
-      humPad(0.7,1.8,true);
-    });
-  }
 
   var lastInteract=performance.now();
   function bump(){ lastInteract=performance.now(); }
