@@ -75,6 +75,12 @@
     transform:translate(-50%,-50%) scale(0);opacity:0;z-index:1;pointer-events:none;
     border:2px solid rgba(255,51,85,.9);
     box-shadow:0 0 60px 10px rgba(220,20,60,.45),0 0 140px 40px rgba(106,13,173,.25),inset 0 0 40px rgba(255,51,85,.3);}
+  .pre__enter{font-family:var(--mono2);font-size:10.5px;letter-spacing:.35em;color:var(--crimson-hi);
+    text-transform:uppercase;padding:8px 22px;border:1px solid rgba(220,20,60,.45);border-radius:999px;
+    background:rgba(8,6,16,.75);box-shadow:0 0 20px rgba(220,20,60,.35);cursor:pointer;
+    margin-top:10px;z-index:3;opacity:0;pointer-events:auto;transition:transform .2s,box-shadow .2s;
+    animation:prePulse 2s ease-in-out infinite;}
+  @keyframes prePulse{0%,100%{box-shadow:0 0 16px rgba(220,20,60,.25);transform:scale(1);}50%{box-shadow:0 0 28px rgba(220,20,60,.65);transform:scale(1.05);}}
 
   /* ---------- shared scene tilt helpers ---------- */
   .tilt{transform-style:preserve-3d;will-change:transform;}
@@ -396,11 +402,12 @@
 <div class="cursor" id="cursor" aria-hidden="true"><div class="cursor__ring"><span class="cursor__iris"></span></div></div>
 
 <!-- PRELOADER -->
-<div class="pre" id="pre" aria-hidden="true">
+<div class="pre" id="pre">
   <div class="pre__iris" id="preIris"></div>
   <div class="pre__k" id="preK">鬼</div>
   <div class="pre__sub" id="preSub">KING OF CURSES · AWAKENING</div>
   <div class="pre__bar"><i id="preFill"></i></div>
+  <button class="pre__enter" id="preEnter" type="button">[ CLICK TO AWAKEN ]</button>
 </div>
 
 <!-- HUD -->
@@ -991,31 +998,50 @@
 
   /* ================= PRELOADER ================= */
   var pre=document.getElementById('pre');
+  var preEnter=document.getElementById('preEnter');
   var load={v:0};
+  var preDismissed=false;
+
+  function dismissPreloader(){
+    if(preDismissed) return;
+    preDismissed=true;
+    unlockAudio();
+    if(hasGSAP){
+      gsap.killTweensOf([pre, '#preIris', '#preEnter', load]);
+      var tlDismiss=gsap.timeline();
+      tlDismiss
+        .to('#preEnter',{opacity:0,duration:.15})
+        .to('#preIris',{scale:reduced?60:90,opacity:1,duration:.5,ease:'power2.in'},'<')
+        .to('#preIris',{opacity:0,duration:.35},'-=.12')
+        .to(pre,{opacity:0,duration:.4,ease:'power2.inOut'},'-=.25')
+        .set(pre,{display:'none'})
+        .from('[data-reveal]',{yPercent:60,opacity:0,duration:.9,ease:'power3.out',stagger:.09},'-=.2')
+        .add(function(){ playHeroIntro(); });
+    } else {
+      pre.style.display='none';
+      playHeroIntro();
+    }
+  }
+
   if(hasGSAP){
     var tl=gsap.timeline();
     tl.to('#preK',{opacity:1,duration:.7,ease:'power2.out',startAt:{scale:.85}})
       .to('#preSub',{opacity:1,duration:.5},'-=.3')
-      .to(load,{v:100,duration:reduced?0.3:1.5,ease:'power1.inOut',
+      .to(load,{v:100,duration:reduced?0.3:1.2,ease:'power1.inOut',
         onUpdate:function(){ document.getElementById('preFill').style.width=load.v+'%'; }},'<')
-      .add(function(){ if(!reduced) humPad(0.5,1.6,false); })
-      .to('#preIris',{scale:reduced?60:90,opacity:1,duration:.5,ease:'power2.in'},'+=.1')
-      .to('#preIris',{opacity:0,duration:.35},'-=.12')
-      .to(pre,{opacity:0,duration:.45,ease:'power2.inOut'},'-=.28')
-      .set(pre,{display:'none'})
-      .from('[data-reveal]',{yPercent:60,opacity:0,duration:.9,ease:'power3.out',stagger:.09},'-=.25')
+      .to('#preEnter',{opacity:1,duration:.4,ease:'power2.out'})
       .add(function(){
-        playHeroIntro();
+        if(userInteracted || (actx && actx.state==='running')){
+          dismissPreloader();
+        }
       });
   } else {
     pre.style.display='none';
     playHeroIntro();
   }
 
-  pre.addEventListener('click',function(){
-    unlockAudio();
-    playHeroIntro();
-  });
+  pre.addEventListener('click',dismissPreloader);
+  if(preEnter) preEnter.addEventListener('click',dismissPreloader);
 
   /* ================= SHARED VIDEO PLAYBACK HELPERS ================= */
   function playForward(v, onEnd){
