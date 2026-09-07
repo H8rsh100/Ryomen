@@ -606,6 +606,7 @@
   }
 
   function unlockAudio(){
+    if(userInteracted && actx && actx.state==='running') return;
     var wasInteracted=userInteracted;
     userInteracted=true;
     var c=AC();
@@ -619,9 +620,8 @@
   }
 
   // Always keep audio ready and unlocked on any user input
-  ['pointerdown','touchstart','keydown','wheel','click','mousedown'].forEach(function(ev){
+  ['pointerdown','touchstart','keydown','wheel','click'].forEach(function(ev){
     window.addEventListener(ev,unlockAudio,{passive:true});
-    document.addEventListener(ev,unlockAudio,{passive:true});
   });
 
   var lastInteract=performance.now();
@@ -630,6 +630,16 @@
     addEventListener(ev,bump,{passive:true});});
 
   /* ================= WEB-AUDIO CURSED-ENERGY SYNTHS ================= */
+  var cachedNoise=null;
+  function getNoise(c){
+    if(cachedNoise) return cachedNoise;
+    var sr=c.sampleRate||44100;
+    cachedNoise=c.createBuffer(1,sr,sr);
+    var d=cachedNoise.getChannelData(0);
+    for(var i=0;i<sr;i++) d[i]=Math.random()*2-1;
+    return cachedNoise;
+  }
+
   function humPad(power,dur,ping){
     if(!userInteracted) return;
     var c=AC(); if(!c || !masterGain) return;
@@ -684,21 +694,16 @@
   function lightningZap(power){
     if(!userInteracted) return;
     var c=AC(); if(!c || !masterGain) return;
-    power=power||1; var now=c.currentTime, sr=c.sampleRate;
+    power=power||1; var now=c.currentTime;
     try{
-      // Electrical arc crackle noise burst
-      var dur=0.28;
-      var n=(sr*dur)|0, b=c.createBuffer(1,n,sr), d=b.getChannelData(0);
-      for(var i=0;i<n;i++){
-        var t=i/n;
-        d[i]=(Math.random()*2-1)*Math.pow(1-t,1.8)*(Math.random()<0.35?1.4:0.6);
-      }
-      var s=c.createBufferSource(); s.buffer=b;
-      var bp=c.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=1600; bp.Q.value=1.8;
+      // Zero-allocation noise burst using cached buffer
+      var s=c.createBufferSource(); s.buffer=getNoise(c);
+      var bp=c.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=1600; bp.Q.value=2;
       var g=c.createGain(); g.gain.setValueAtTime(0.0001,now);
       g.gain.exponentialRampToValueAtTime(0.42*power,now+0.01);
-      g.gain.exponentialRampToValueAtTime(0.0001,now+dur);
-      s.connect(bp); bp.connect(g); g.connect(masterGain); s.start(now);
+      g.gain.exponentialRampToValueAtTime(0.0001,now+0.25);
+      s.connect(bp); bp.connect(g); g.connect(masterGain);
+      s.start(now); s.stop(now+0.25);
 
       // Low electric arc thud
       var o=c.createOscillator(); o.type='sawtooth';
@@ -716,7 +721,7 @@
   function domainBoom(){
     if(!userInteracted) return;
     var c=AC(); if(!c || !masterGain) return;
-    var now=c.currentTime, sr=c.sampleRate;
+    var now=c.currentTime;
     try{
       // Layer 1: Heavy punchy 808 kick (260Hz -> 48Hz)
       var o=c.createOscillator(); o.type='sine';
@@ -739,26 +744,24 @@
       o2.connect(f2); f2.connect(g2); g2.connect(masterGain);
       o2.start(now); o2.stop(now+1.6);
 
-      // Layer 3: Massive thunderous explosion shockwave (shaped white noise)
-      var n=(sr*1.6)|0, b=c.createBuffer(1,n,sr), d=b.getChannelData(0);
-      for(var i=0;i<n;i++){var t=i/n; d[i]=(Math.random()*2-1)*Math.pow(1-t,1.7);}
-      var s=c.createBufferSource(); s.buffer=b;
+      // Layer 3: Massive thunderous explosion shockwave (zero-allocation noise)
+      var s=c.createBufferSource(); s.buffer=getNoise(c);
       var lpNoise=c.createBiquadFilter(); lpNoise.type='lowpass';
-      lpNoise.frequency.setValueAtTime(1800,now);
-      lpNoise.frequency.exponentialRampToValueAtTime(220,now+1.2);
+      lpNoise.frequency.setValueAtTime(1600,now);
+      lpNoise.frequency.exponentialRampToValueAtTime(200,now+1.2);
       var gg=c.createGain(); gg.gain.setValueAtTime(0.0001,now);
       gg.gain.exponentialRampToValueAtTime(0.65,now+0.02);
       gg.gain.exponentialRampToValueAtTime(0.0001,now+1.6);
       s.connect(lpNoise); lpNoise.connect(gg); gg.connect(masterGain);
-      s.start(now);
+      s.start(now); s.stop(now+1.6);
 
       // Layer 4: Malevolent Shrine cursed bells (dissonant diminished chord)
-      [220, 311.13, 440, 622.25, 880].forEach(function(f,i){
+      [220, 311.13, 440, 622.25].forEach(function(f,i){
         var bo=c.createOscillator(); bo.type='sine'; bo.frequency.value=f;
         var bg=c.createGain(); bg.gain.setValueAtTime(0.0001,now+0.03);
         bg.gain.exponentialRampToValueAtTime((0.26/(i*0.6+1)),now+0.08);
-        bg.gain.exponentialRampToValueAtTime(0.0001,now+3.2);
-        bo.connect(bg); bg.connect(masterGain); bo.start(now+0.03); bo.stop(now+3.2);
+        bg.gain.exponentialRampToValueAtTime(0.0001,now+3.0);
+        bo.connect(bg); bg.connect(masterGain); bo.start(now+0.03); bo.stop(now+3.0);
       });
     }catch(e){}
   }
@@ -766,7 +769,7 @@
   function shing(intensity){
     if(!userInteracted) return;
     var c=AC(); if(!c || !masterGain) return;
-    intensity=intensity||1; var now=c.currentTime, sr=c.sampleRate;
+    intensity=intensity||1; var now=c.currentTime;
     try{
       // Layer 1: Razor steel slice (high frequency chirp 4800Hz -> 1200Hz)
       var oChirp=c.createOscillator(); oChirp.type='sawtooth';
@@ -788,16 +791,15 @@
         ringO.connect(ringG); ringG.connect(masterGain); ringO.start(now); ringO.stop(now+0.55);
       });
 
-      // Layer 3: Air slice noise whoosh
-      var n=(sr*0.35)|0, b=c.createBuffer(1,n,sr), d=b.getChannelData(0);
-      for(var i=0;i<n;i++){var t=i/n; d[i]=(Math.random()*2-1)*Math.pow(1-t,2.8);}
-      var s=c.createBufferSource(); s.buffer=b;
+      // Layer 3: Air slice noise whoosh (zero-allocation)
+      var s=c.createBufferSource(); s.buffer=getNoise(c);
       var bp=c.createBiquadFilter(); bp.type='bandpass'; bp.Q.value=5;
       bp.frequency.setValueAtTime(3600,now); bp.frequency.exponentialRampToValueAtTime(1400,now+0.22);
       var g=c.createGain(); g.gain.setValueAtTime(0.0001,now);
       g.gain.exponentialRampToValueAtTime(0.42*intensity,now+0.01);
-      g.gain.exponentialRampToValueAtTime(0.0001,now+0.32);
-      s.connect(bp); bp.connect(g); g.connect(masterGain); s.start(now);
+      g.gain.exponentialRampToValueAtTime(0.0001,now+0.3);
+      s.connect(bp); bp.connect(g); g.connect(masterGain);
+      s.start(now); s.stop(now+0.3);
 
       // Layer 4: Punchy matter-cutting thud (180Hz -> 55Hz)
       var o=c.createOscillator(); o.type='sine';
@@ -857,7 +859,7 @@
     strokePts(ctx,st.main,coreW*9  ,'rgba(106,13,173,'+(a*0.05)+')');
     strokePts(ctx,st.main,coreW*3.6,'rgba(139,0,0,'+(a*0.14)+')');
     strokePts(ctx,st.main,coreW*1.5,'rgba(255,120,150,'+(a*0.5)+')');
-    strokePts(ctx,st.main,coreW*0.55,'rgba(255,240,240,'+a+')',14,'rgba(255,51,85,'+a+')');
+    strokePts(ctx,st.main,coreW*0.55,'rgba(255,240,240,'+a+')');
     for(var bi=0;bi<st.branches.length;bi++){
       var br=st.branches[bi];
       strokePts(ctx,br,coreW*1.5,'rgba(180,50,80,'+(a*0.09)+')');
