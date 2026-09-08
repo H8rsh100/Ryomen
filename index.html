@@ -675,62 +675,19 @@
     return cachedNoise;
   }
 
-  // Continuous atmospheric cursed audio — starts on Scene index>=1 & stays latched ON
+  // Continuous drone DISABLED per user request — no buzz.
+  // Scene SFX (thunder / domain boom / shing / hum) still play per scene.
   var continuousAudioStarted=false, ambientGain=null;
-  function startContinuousCursedAudio(){
-    if(continuousAudioStarted) return;
-    if(!audioLatched || !userInteracted) return;
-    var c=AC(); if(!c || !masterGain) return;
-    if(c.state!=='running'){
-      c.resume().catch(function(){});
-      return; // watchdog / onstatechange will retry — no runaway recursion
-    }
-    continuousAudioStarted=true;
-    var now=c.currentTime;
+  function stopContinuousCursedAudio(){
     try{
-      ambientGain=c.createGain();
-      ambientGain.gain.setValueAtTime(0.0001,now);
-      ambientGain.gain.exponentialRampToValueAtTime(0.58,now+1.2);
-      ambientGain.connect(masterGain);
-
-      // 1. Deep continuous sub-bass cursed presence (55Hz sine)
-      var subOsc=c.createOscillator();
-      subOsc.type='sine';
-      subOsc.frequency.value=55;
-      subOsc.connect(ambientGain);
-      subOsc.start(now);
-
-      // 2. Harmonic mid drone (110Hz + 110.8Hz detune for ominous cursed body)
-      var o1=c.createOscillator(); o1.type='triangle'; o1.frequency.value=110;
-      var o2=c.createOscillator(); o2.type='sine'; o2.frequency.value=110.8;
-      var fDrone=c.createBiquadFilter(); fDrone.type='lowpass'; fDrone.frequency.value=400; fDrone.Q.value=2.5;
-      o1.connect(fDrone); o2.connect(fDrone); fDrone.connect(ambientGain);
-      o1.start(now); o2.start(now);
-
-      // 3. Faint eerie overtone (220Hz) for phone/laptop speaker clarity
-      var o3=c.createOscillator(); o3.type='sine'; o3.frequency.value=220;
-      var g3=c.createGain(); g3.gain.value=0.18;
-      o3.connect(g3); g3.connect(ambientGain);
-      o3.start(now);
-
-      // 4. Slow breathing LFO (undulating cursed pulse)
-      var lfo=c.createOscillator(); lfo.frequency.value=0.18;
-      var lfoG=c.createGain(); lfoG.gain.value=100;
-      lfo.connect(lfoG); lfoG.connect(fDrone.frequency);
-      lfo.start(now);
-
-      // 5. Subtle cursed atmospheric wind shimmer
-      var nSrc=c.createBufferSource();
-      nSrc.buffer=getNoise(c);
-      nSrc.loop=true;
-      var nFilt=c.createBiquadFilter(); nFilt.type='bandpass'; nFilt.frequency.value=1400; nFilt.Q.value=3.2;
-      var nGain=c.createGain(); nGain.gain.value=0.08;
-      nSrc.connect(nFilt); nFilt.connect(nGain); nGain.connect(ambientGain);
-      nSrc.start(now);
-
-      droneNodes=[subOsc,o1,o2,o3,lfo,nSrc,ambientGain,fDrone];
-      try{ syncSndBtn(); }catch(e){}
-    }catch(e){ continuousAudioStarted=false; }
+      for(var i=0;i<droneNodes.length;i++){ try{ droneNodes[i].stop(); }catch(e){} try{ droneNodes[i].disconnect(); }catch(e){} }
+    }catch(e){}
+    droneNodes=[]; ambientGain=null; continuousAudioStarted=false;
+  }
+  function startContinuousCursedAudio(){
+    // intentionally disabled: kills buzz; stops any legacy drone if present
+    stopContinuousCursedAudio();
+    try{ syncSndBtn(); }catch(e){}
   }
 
   // Latch audio ON from 2nd scene onwards — call on every scene enter
@@ -739,9 +696,7 @@
       if(typeof idx!=='undefined' && idx>=1 && !audioLatched){
         audioLatched=true;
       }
-      if(audioLatched && userInteracted){
-        startContinuousCursedAudio();
-      }
+      stopContinuousCursedAudio();
       syncSndBtn();
     }catch(e){}
   }
@@ -1148,10 +1103,8 @@
       showAwake(true);
       unlockAudio(true);
       audioLatched=true;
-      startContinuousCursedAudio();
+      stopContinuousCursedAudio();
       eyeArc(1.2,true);
-      // Retry once shortly after: covers Chrome resuming async after click
-      setTimeout(function(){ startContinuousCursedAudio(); eyeArc(0.9,true); },450);
     },
     reverse:function(done){
       showAwake(false);
