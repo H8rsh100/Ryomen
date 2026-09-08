@@ -199,8 +199,6 @@
     will-change:transform,opacity,filter;}
   .drop__glyphs .g1{left:9vw;top:13vh;font-size:clamp(28px,5vw,86px);color:rgba(255,51,85,.82);}
   .drop__glyphs .g2{right:10vw;top:18vh;font-size:clamp(24px,4.3vw,72px);color:rgba(106,13,173,.78);}
-  .drop__glyphs .g3{left:20vw;bottom:15vh;font-size:clamp(18px,2.4vw,34px);color:rgba(255,232,232,.46);}
-  .drop__glyphs .g4{right:22vw;bottom:13vh;font-size:clamp(18px,2.4vw,34px);color:rgba(255,232,232,.44);}
   .drop__seal{position:absolute;left:50%;top:50%;z-index:6;pointer-events:none;transform:translate(-50%,-50%);
     opacity:0;mix-blend-mode:screen;will-change:opacity,transform,filter;}
   .drop__seal-g{display:block;font-family:var(--kanji);font-size:clamp(130px,24vw,340px);font-weight:900;line-height:1;
@@ -228,7 +226,6 @@
   .drop__fbmsg{position:absolute;left:50%;top:12%;transform:translateX(-50%);z-index:12;display:none;
     font-family:var(--mono2);font-size:12px;color:rgba(255,232,232,.55);letter-spacing:.08em;text-align:center;}
   @media (max-width:640px){
-    .drop__glyphs .g3,.drop__glyphs .g4{display:none;}
     .drop__seal-g{font-size:clamp(120px,40vw,240px);}
     .drop__splash{width:100%;height:100%;}
   }
@@ -488,8 +485,6 @@
           <div class="drop__glyphs" id="dropGlyphs" aria-hidden="true">
             <span class="g1">呪臨御嶽</span>
             <span class="g2">斬解</span>
-            <span class="g3">解</span>
-            <span class="g4">鬼</span>
           </div>
           <div class="drop__seal" id="dropSeal" aria-hidden="true"><span class="drop__seal-g" id="dropSealG">鬼</span></div>
           <div class="drop__glow" id="dropGlow"></div>
