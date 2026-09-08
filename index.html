@@ -387,6 +387,17 @@
     .nav--prev{left:14px;} .nav--next{right:14px;}
     .dots{bottom:36px;}
   }
+
+  /* ---- SOUND TOGGLE (presentation-safe) ---- */
+  .snd{position:fixed;top:14px;right:16px;z-index:73;display:flex;align-items:center;gap:8px;
+    cursor:pointer;user-select:none;font-family:var(--mono2);font-size:10px;letter-spacing:.24em;
+    text-transform:uppercase;color:rgba(255,232,232,.75);background:rgba(8,6,16,.55);
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    border:1px solid rgba(220,20,60,.4);border-radius:999px;padding:9px 14px;
+    box-shadow:0 0 16px rgba(220,20,60,.18);}
+  .snd:hover{border-color:var(--crimson-hi);}
+  .snd .dot{width:8px;height:8px;border-radius:50%;background:#555;box-shadow:0 0 8px rgba(0,0,0,.5);}
+  .snd.on .dot{background:var(--crimson-hi);box-shadow:0 0 10px var(--crimson-hi);}
 </style>
 </head>
 <body>
@@ -548,6 +559,7 @@
 <button class="nav nav--next" id="navNext" aria-label="Next">&#8250;</button>
 <div class="dots" id="dots" aria-hidden="true"></div>
 <div class="cue" id="cue">TAP&nbsp;&nbsp;NEXT&nbsp;&nbsp;&#8594;</div>
+<button class="snd" id="sndBtn" aria-label="Toggle sound"><span class="dot"></span><span id="sndLabel">SOUND: OFF</span></button>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <script>
@@ -558,8 +570,13 @@
 
   var hooks = {};
 
+  // ============ PRESENTATION-SAFE AUDIO ENGINE ============
+  // Rule: silent on Scene 0 (hero). Starts on Scene 1 (2nd scene, index>=1),
+  // latches ON and stays on for the whole deck. Watchdog auto-resumes.
   var userInteracted=false;
   var actx=null, masterComp=null, masterGain=null;
+  var audioLatched=false;   // becomes true once user reaches scene index >= 1
+  var droneNodes=[];        // keep refs so GC never kills the drone
 
   function AC(){
     try{
@@ -580,25 +597,67 @@
 
         masterGain.connect(masterComp);
         masterComp.connect(actx.destination);
+
+        actx.onstatechange = function(){
+          try{ syncSndBtn(); }catch(e){}
+          if(actx.state==='running' && audioLatched && userInteracted){
+            startContinuousCursedAudio();
+          }
+        };
       }
-      if(actx.state==='suspended'){
+      if(actx.state==='suspended' && userInteracted){
         actx.resume().catch(function(){});
       }
     }catch(e){}
     return actx;
   }
 
-  function unlockAudio(){
-    userInteracted=true;
-    var c=AC();
-    if(c && c.state==='suspended'){
-      c.resume().catch(function(){});
-    }
+  function audioReady(){
+    return !!(actx && masterGain && actx.state==='running');
   }
 
-  ['pointerdown','touchstart','keydown','wheel','click'].forEach(function(ev){
-    window.addEventListener(ev,unlockAudio,{passive:true});
+  function unlockAudio(fromGesture){
+    if(fromGesture) userInteracted=true;
+    var c=AC();
+    if(c && c.state==='suspended' && userInteracted){
+      c.resume().then(function(){
+        if(audioLatched) startContinuousCursedAudio();
+        try{ syncSndBtn(); }catch(e){}
+      }).catch(function(){});
+    } else if(c && c.state==='running' && audioLatched){
+      startContinuousCursedAudio();
+    }
+    try{ syncSndBtn(); }catch(e){}
+  }
+
+  function syncSndBtn(){
+    var b=document.getElementById('sndBtn'), l=document.getElementById('sndLabel');
+    if(!b||!l) return;
+    var on=audioReady() && audioLatched;
+    b.classList.toggle('on',!!on);
+    l.textContent=on?'SOUND: ON':'SOUND: OFF';
+  }
+
+  ['pointerdown','touchstart','keydown','click'].forEach(function(ev){
+    window.addEventListener(ev,function(){ unlockAudio(true); },{passive:true});
   });
+  // wheel alone is NOT a valid WebAudio user-activation on Chrome, so mark
+  // interaction but don't rely on it: the Next-button/keys will unlock.
+  window.addEventListener('wheel',function(){ if(audioLatched) unlockAudio(false); },{passive:true});
+  document.addEventListener('visibilitychange',function(){
+    if(!document.hidden) unlockAudio(false);
+  });
+  // Watchdog: fixes "suddenly goes off on its own" (OS suspend / GC / tab hide)
+  setInterval(function(){
+    if(!audioLatched || !userInteracted) return;
+    if(document.hidden) return;
+    try{
+      var c=AC();
+      if(c && c.state==='suspended'){ c.resume().catch(function(){}); }
+      else if(c && c.state==='running'){ startContinuousCursedAudio(); }
+      syncSndBtn();
+    }catch(e){}
+  },2000);
 
   var lastInteract=performance.now();
   function bump(){ lastInteract=performance.now(); }
@@ -616,23 +675,22 @@
     return cachedNoise;
   }
 
-  // Continuous atmospheric cursed audio — starts on Scene 1 thunder strike & stays on till the end
+  // Continuous atmospheric cursed audio — starts on Scene index>=1 & stays latched ON
   var continuousAudioStarted=false, ambientGain=null;
   function startContinuousCursedAudio(){
     if(continuousAudioStarted) return;
+    if(!audioLatched || !userInteracted) return;
     var c=AC(); if(!c || !masterGain) return;
-    if(c.state==='suspended'){
-      c.resume().then(function(){
-        startContinuousCursedAudio();
-      }).catch(function(){});
-      return;
+    if(c.state!=='running'){
+      c.resume().catch(function(){});
+      return; // watchdog / onstatechange will retry — no runaway recursion
     }
     continuousAudioStarted=true;
     var now=c.currentTime;
     try{
       ambientGain=c.createGain();
       ambientGain.gain.setValueAtTime(0.0001,now);
-      ambientGain.gain.exponentialRampToValueAtTime(0.58,now+1.0);
+      ambientGain.gain.exponentialRampToValueAtTime(0.58,now+1.2);
       ambientGain.connect(masterGain);
 
       // 1. Deep continuous sub-bass cursed presence (55Hz sine)
@@ -669,14 +727,31 @@
       var nGain=c.createGain(); nGain.gain.value=0.08;
       nSrc.connect(nFilt); nFilt.connect(nGain); nGain.connect(ambientGain);
       nSrc.start(now);
+
+      droneNodes=[subOsc,o1,o2,o3,lfo,nSrc,ambientGain,fDrone];
+      try{ syncSndBtn(); }catch(e){}
+    }catch(e){ continuousAudioStarted=false; }
+  }
+
+  // Latch audio ON from 2nd scene onwards — call on every scene enter
+  function latchAudioFromScene(){
+    try{
+      if(typeof idx!=='undefined' && idx>=1 && !audioLatched){
+        audioLatched=true;
+      }
+      if(audioLatched && userInteracted){
+        startContinuousCursedAudio();
+      }
+      syncSndBtn();
     }catch(e){}
   }
 
   // Thunder strike sound when lightning arcs crack across Scene 1
   function thunderStrikeSound(power){
+    if(!audioLatched) return;
     var c=AC(); if(!c || !masterGain) return;
-    if(c.state==='suspended'){
-      c.resume().then(function(){ thunderStrikeSound(power); }).catch(function(){});
+    if(c.state!=='running'){
+      c.resume().catch(function(){});
       return;
     }
     power=power||1; var now=c.currentTime;
@@ -704,7 +779,9 @@
   }
 
   function humPad(power,dur,ping){
+    if(!audioLatched || !userInteracted) return;
     var c=AC(); if(!c || !masterGain) return;
+    if(c.state!=='running') return;
     power=power||0.8; dur=dur||2.2; var now=c.currentTime;
     try{
       var base=54+power*20;
@@ -738,7 +815,8 @@
   }
 
   function softPing(power){
-    var c=AC(); if(!c || !masterGain) return; power=power||1; var now=c.currentTime;
+    if(!audioLatched || !userInteracted) return;
+    var c=AC(); if(!c || !masterGain) return; if(c.state!=='running') return; power=power||1; var now=c.currentTime;
     try{
       [880,1320,1760].forEach(function(f,i){
         var o=c.createOscillator(); o.type='sine'; o.frequency.value=f;
@@ -751,7 +829,9 @@
   }
 
   function domainBoom(){
+    if(!audioLatched || !userInteracted) return;
     var c=AC(); if(!c || !masterGain) return;
+    if(c.state!=='running') return;
     var now=c.currentTime;
     try{
       // Layer 1: Heavy punchy 808 kick (260Hz -> 48Hz)
@@ -798,7 +878,9 @@
   }
 
   function shing(intensity){
+    if(!audioLatched || !userInteracted) return;
     var c=AC(); if(!c || !masterGain) return;
+    if(c.state!=='running') return;
     intensity=intensity||1; var now=c.currentTime;
     try{
       var oChirp=c.createOscillator(); oChirp.type='sawtooth';
@@ -1064,8 +1146,12 @@
     enter:function(dir){
       sizeEyeBolt();
       showAwake(true);
-      unlockAudio();
+      unlockAudio(true);
+      audioLatched=true;
+      startContinuousCursedAudio();
       eyeArc(1.2,true);
+      // Retry once shortly after: covers Chrome resuming async after click
+      setTimeout(function(){ startContinuousCursedAudio(); eyeArc(0.9,true); },450);
     },
     reverse:function(done){
       showAwake(false);
@@ -1076,7 +1162,9 @@
   if(eyeStick){
     eyeStick.style.cursor='pointer';
     eyeStick.addEventListener('click',function(){
-      unlockAudio();
+      unlockAudio(true);
+      audioLatched=true;
+      startContinuousCursedAudio();
       eyeArc(1.2,true);
     });
   }
@@ -1309,10 +1397,12 @@
   (function(){
     if(reduced) return;
     function schedule(){ setTimeout(function(){
-      if(!document.hidden){
-        if(sceneName()==='eye' && eyeVid.currentTime>0.4){ eyeArc(0.4,Math.random()<0.4); }
-        else { humPad(0.3,1.4,false); }
-      }
+      try{
+        if(!document.hidden && audioLatched && audioReady()){
+          if(sceneName()==='eye'){ try{ eyeArc(0.4,Math.random()<0.4); }catch(e){} }
+          else { humPad(0.3,1.4,false); }
+        }
+      }catch(e){}
       schedule();
     }, 7000+Math.random()*8000); }
     schedule();
@@ -1329,7 +1419,7 @@
   function sceneName(){ return scenes[idx] ? scenes[idx].dataset.scene : ''; }
 
   scenes.forEach(function(s,i){ var d=document.createElement('i'); if(i===0) d.className='on';
-    d.addEventListener('click',function(){ unlockAudio(); jump(i); }); dotsWrap.appendChild(d); });
+    d.addEventListener('click',function(){ unlockAudio(true); jump(i); }); dotsWrap.appendChild(d); });
 
   function syncUI(){
     navPrev.disabled = idx===0;
@@ -1350,38 +1440,52 @@
       cur.classList.remove('is-active');
       nxt.classList.add('is-active');
       idx=target; syncUI();
+      latchAudioFromScene();
       var h=hooks[nxtName];
       if(h && h.enter) h.enter(dir);
+      else { if(audioLatched) startContinuousCursedAudio(); }
       setTimeout(function(){ busy=false; navNext.classList.remove('busy'); navPrev.classList.remove('busy'); },900);
     }
     var ch=hooks[curName];
     if(dir<0 && ch && ch.reverse){ ch.reverse(proceed); }
     else { proceed(); }
   }
-  function go(dir){ unlockAudio(); activate(idx+dir,dir); }
-  function jump(i){ unlockAudio(); activate(i, i>idx?1:-1); }
+  function go(dir){ unlockAudio(true); activate(idx+dir,dir); }
+  function jump(i){ unlockAudio(true); activate(i, i>idx?1:-1); }
 
-  navNext.addEventListener('click',function(){ unlockAudio(); go(1); });
-  navPrev.addEventListener('click',function(){ unlockAudio(); go(-1); });
+  navNext.addEventListener('click',function(){ unlockAudio(true); go(1); });
+  navPrev.addEventListener('click',function(){ unlockAudio(true); go(-1); });
   addEventListener('keydown',function(e){
-    if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' '){ e.preventDefault(); unlockAudio(); go(1); }
-    else if(e.key==='ArrowLeft'||e.key==='PageUp'){ e.preventDefault(); unlockAudio(); go(-1); }
+    if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' '){ e.preventDefault(); unlockAudio(true); go(1); }
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){ e.preventDefault(); unlockAudio(true); go(-1); }
   });
   var wheelLock=0;
   addEventListener('wheel',function(e){
     var now=performance.now(); if(now-wheelLock<650) return;
     if(Math.abs(e.deltaY)<12) return; wheelLock=now;
-    unlockAudio();
+    unlockAudio(true);
     go(e.deltaY>0?1:-1);
   },{passive:true});
   var touchY=null;
-  addEventListener('touchstart',function(e){ unlockAudio(); touchY=e.touches[0].clientY; },{passive:true});
+  addEventListener('touchstart',function(e){ unlockAudio(true); touchY=e.touches[0].clientY; },{passive:true});
   addEventListener('touchend',function(e){
     if(touchY==null) return; var dy=touchY-(e.changedTouches[0].clientY); touchY=null;
-    if(Math.abs(dy)>60){ unlockAudio(); go(dy>0?1:-1); }
+    if(Math.abs(dy)>60){ unlockAudio(true); go(dy>0?1:-1); }
   },{passive:true});
 
+  // Presentation-safe sound button: guaranteed user gesture to force-start audio
+  var sndBtn=document.getElementById('sndBtn');
+  if(sndBtn) sndBtn.addEventListener('click',function(e){
+    e.stopPropagation();
+    unlockAudio(true);
+    // If still on hero, jump to scene 2 so presenter hears it instantly
+    if(idx===0){ audioLatched=true; startContinuousCursedAudio(); go(1); }
+    else { audioLatched=true; startContinuousCursedAudio(); thunderStrikeSound(0.8); }
+    setTimeout(function(){ startContinuousCursedAudio(); syncSndBtn(); },400);
+  });
+
   syncUI();
+  syncSndBtn();
 
   /* ================= WebGL fluid ================= */
   (function initSplashCursor(){
