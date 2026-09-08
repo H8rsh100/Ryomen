@@ -1426,15 +1426,14 @@
     if(Math.abs(dy)>60){ unlockAudio(true); go(dy>0?1:-1); }
   },{passive:true});
 
-  // Presentation-safe sound button: guaranteed user gesture to force-start audio
+  // Sound button: arms audio in place — never auto-navigates, stays on current scene
   var sndBtn=document.getElementById('sndBtn');
   if(sndBtn) sndBtn.addEventListener('click',function(e){
     e.stopPropagation();
     unlockAudio(true);
-    // If still on hero, jump to scene 2 so presenter hears it instantly
-    if(idx===0){ audioLatched=true; startContinuousCursedAudio(); go(1); }
-    else { audioLatched=true; startContinuousCursedAudio(); thunderStrikeSound(0.8); }
-    setTimeout(function(){ startContinuousCursedAudio(); syncSndBtn(); },400);
+    audioLatched=true;
+    stopContinuousCursedAudio();
+    syncSndBtn();
   });
 
   syncUI();
