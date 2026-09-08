@@ -119,17 +119,18 @@
     transform:translate(-50%,-50%) scaleX(.72);opacity:.28;pointer-events:none;border-radius:999px;
     background:radial-gradient(ellipse at center,rgba(255,240,240,.22),rgba(220,20,60,.2) 32%,rgba(106,13,173,.1) 55%,transparent 74%);
     filter:blur(16px);mix-blend-mode:screen;will-change:transform,opacity;}
-  .eye__awake{position:absolute;left:0;right:0;bottom:10vh;z-index:5;pointer-events:none;opacity:0;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
-    background:transparent;will-change:opacity;transition:opacity .3s ease;}
-  .eye__awake-k{font-family:var(--kanji);font-weight:800;line-height:1;font-size:clamp(44px,7.5vw,96px);
-    letter-spacing:.22em;color:var(--paper);-webkit-text-stroke:1px rgba(255,51,85,.5);
-    text-shadow:0 0 30px rgba(220,20,60,.7),0 0 60px rgba(106,13,173,.5);transform:translateY(12px);transition:transform .6s ease;}
-  .eye__awake-s{font-family:var(--kanji);font-size:clamp(11px,1.4vw,15px);letter-spacing:.55em;color:rgba(255,51,85,.85);text-shadow:0 0 16px rgba(220,20,60,.5);}
-  .eye__awake.on .eye__awake-k{transform:translateY(0);}
+  .eye__awake{position:absolute;inset:0;z-index:5;pointer-events:none;opacity:0;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+    background:transparent;will-change:opacity,transform;transition:opacity .35s ease;}
+  .eye__awake-k{font-family:var(--kanji);font-weight:900;line-height:1;font-size:clamp(54px,9.5vw,112px);
+    letter-spacing:.22em;color:var(--paper);-webkit-text-stroke:1.5px rgba(255,51,85,.6);
+    text-shadow:0 0 35px rgba(220,20,60,.85),0 0 75px rgba(106,13,173,.65);transform:scale(0.92);transition:transform .45s ease;}
+  .eye__awake-s{font-family:var(--kanji);font-size:clamp(12px,1.7vw,18px);letter-spacing:.55em;color:rgba(255,51,85,.9);text-shadow:0 0 20px rgba(220,20,60,.6);}
+  .eye__awake.on{opacity:1;}
+  .eye__awake.on .eye__awake-k{transform:scale(1);}
   .eye__bolt{position:absolute;inset:0;z-index:6;width:100%;height:100%;pointer-events:none;mix-blend-mode:screen;}
   .eye__flash{position:absolute;inset:0;z-index:7;pointer-events:none;opacity:0;mix-blend-mode:screen;
-    background:linear-gradient(180deg,#ffe0e0 0%,#ffbcbc 40%,transparent 85%);}
+    background:radial-gradient(ellipse at center,#ffffff 0%,#ff3355 45%,#6a0dad 75%,transparent 100%);}
   .eye__fbmsg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:4;display:none;
     font-family:var(--mono2);font-size:12px;color:rgba(255,232,232,.55);letter-spacing:.08em;text-align:center;padding:0 20px;}
 
@@ -443,13 +444,8 @@
 
   <!-- SCENE 1 — CURSED FORM AWAKEN -->
   <section class="scene" data-scene="eye" data-hud-state="TRUE FORM: EMERGING" data-hud-domain="SEALED">
-    <div class="eye__stick" id="eyeStick">
-      <div class="eye__bg tilt" data-tilt="0.3">
-        <img class="eye__video" id="eyeVid" src="./c69f8123bc4146cb8345defa0377794d.jpg" alt="Sukuna awakening"
-             onerror="this.src='./img/sukuna_landing.jpg';"
-             style="object-fit:cover;object-position:50% 40%;width:100%;height:100%;transform:scale(1.06);">
-        <div class="eye__overlay"></div>
-        <div class="eye__tint"></div>
+    <div class="eye__stick" id="eyeStick" style="background:#000;">
+      <div class="eye__bg tilt" data-tilt="0.3" style="background:#000;">
         <div class="eye__awake" id="eyeAwake" aria-hidden="true">
           <span class="eye__awake-k">両面宿儺</span>
           <span class="eye__awake-s">呪いの王 · 不死の怪物</span>
@@ -636,7 +632,7 @@
     try{
       ambientGain=c.createGain();
       ambientGain.gain.setValueAtTime(0.0001,now);
-      ambientGain.gain.exponentialRampToValueAtTime(0.48,now+1.5);
+      ambientGain.gain.exponentialRampToValueAtTime(0.58,now+1.0);
       ambientGain.connect(masterGain);
 
       // 1. Deep continuous sub-bass cursed presence (55Hz sine)
@@ -649,22 +645,28 @@
       // 2. Harmonic mid drone (110Hz + 110.8Hz detune for ominous cursed body)
       var o1=c.createOscillator(); o1.type='triangle'; o1.frequency.value=110;
       var o2=c.createOscillator(); o2.type='sine'; o2.frequency.value=110.8;
-      var fDrone=c.createBiquadFilter(); fDrone.type='lowpass'; fDrone.frequency.value=340; fDrone.Q.value=2.5;
+      var fDrone=c.createBiquadFilter(); fDrone.type='lowpass'; fDrone.frequency.value=400; fDrone.Q.value=2.5;
       o1.connect(fDrone); o2.connect(fDrone); fDrone.connect(ambientGain);
       o1.start(now); o2.start(now);
 
-      // 3. Slow breathing LFO (undulating cursed pulse)
+      // 3. Faint eerie overtone (220Hz) for phone/laptop speaker clarity
+      var o3=c.createOscillator(); o3.type='sine'; o3.frequency.value=220;
+      var g3=c.createGain(); g3.gain.value=0.18;
+      o3.connect(g3); g3.connect(ambientGain);
+      o3.start(now);
+
+      // 4. Slow breathing LFO (undulating cursed pulse)
       var lfo=c.createOscillator(); lfo.frequency.value=0.18;
-      var lfoG=c.createGain(); lfoG.gain.value=90;
+      var lfoG=c.createGain(); lfoG.gain.value=100;
       lfo.connect(lfoG); lfoG.connect(fDrone.frequency);
       lfo.start(now);
 
-      // 4. Subtle cursed atmospheric wind shimmer
+      // 5. Subtle cursed atmospheric wind shimmer
       var nSrc=c.createBufferSource();
       nSrc.buffer=getNoise(c);
       nSrc.loop=true;
       var nFilt=c.createBiquadFilter(); nFilt.type='bandpass'; nFilt.frequency.value=1400; nFilt.Q.value=3.2;
-      var nGain=c.createGain(); nGain.gain.value=0.07;
+      var nGain=c.createGain(); nGain.gain.value=0.08;
       nSrc.connect(nFilt); nFilt.connect(nGain); nGain.connect(ambientGain);
       nSrc.start(now);
     }catch(e){}
@@ -1033,21 +1035,25 @@
 
   var eyeStorming=false;
   function eyeArc(power,withSound){
-    if(reduced||eyeStorming||!eW) return; eyeStorming=true;
+    power = power || 1;
     if(withSound){
       thunderStrikeSound(power);
-      humPad(0.55*power,1.6+power,power>=1);
+      humPad(0.7*power,2.2,power>=1);
       startContinuousCursedAudio();
     }
-    var sx=eW*(0.14+Math.random()*0.72);
-    var strikes=[buildStrike(sx,-20, sx+(Math.random()-0.5)*eW*0.18, eH*(0.52+Math.random()*0.3), eW*0.16)];
-    if(power>0.65 && Math.random()<0.75){ var sx2=eW*(0.1+Math.random()*0.8);
-      strikes.push(buildStrike(sx2,-20, sx2+(Math.random()-0.5)*eW*0.14, eH*(0.35+Math.random()*0.3), eW*0.12)); }
+    if(eyeStorming) return;
+    sizeEyeBolt();
+    var w = eW || innerWidth, h = eH || innerHeight;
+    eyeStorming=true;
+    var sx=w*(0.14+Math.random()*0.72);
+    var strikes=[buildStrike(sx,-20, sx+(Math.random()-0.5)*w*0.18, h*(0.52+Math.random()*0.3), w*0.16)];
+    if(power>0.65 && Math.random()<0.75){ var sx2=w*(0.1+Math.random()*0.8);
+      strikes.push(buildStrike(sx2,-20, sx2+(Math.random()-0.5)*w*0.14, h*(0.35+Math.random()*0.3), w*0.12)); }
     strikeSeq(
-      function(a){ ectx.clearRect(0,0,eW,eH);
-        strikes.forEach(function(st,i){ drawStrike(ectx,st,(i?1.2:2)*Math.max(power,0.5),a*(i?0.5:1)*power,eW*0.3); }); },
-      function(a){ eyeFlash.style.opacity=(a*power*0.24).toFixed(2); },
-      function(){ ectx.clearRect(0,0,eW,eH); eyeFlash.style.opacity=0; eyeStorming=false; },
+      function(a){ ectx.clearRect(0,0,w,h);
+        strikes.forEach(function(st,i){ drawStrike(ectx,st,(i?1.2:2.2)*Math.max(power,0.5),a*(i?0.6:1)*power,w*0.3); }); },
+      function(a){ eyeFlash.style.opacity=(a*power*0.5).toFixed(2); },
+      function(){ ectx.clearRect(0,0,w,h); eyeFlash.style.opacity=0; eyeStorming=false; },
       power>0.7
     );
   }
@@ -1057,23 +1063,23 @@
   hooks.eye={
     enter:function(dir){
       sizeEyeBolt();
-      if(dir<0){
-        showAwake(true);
-      } else {
-        showAwake(false);
-        unlockAudio();
-        setTimeout(function(){
-          showAwake(true);
-          eyeArc(1,true);
-          startContinuousCursedAudio();
-        },1800);
-      }
+      showAwake(true);
+      unlockAudio();
+      eyeArc(1.2,true);
     },
     reverse:function(done){
       showAwake(false);
       done&&done();
     }
   };
+
+  if(eyeStick){
+    eyeStick.style.cursor='pointer';
+    eyeStick.addEventListener('click',function(){
+      unlockAudio();
+      eyeArc(1.2,true);
+    });
+  }
 
   /* ================= SECTION 3 — MALEVOLENT SHRINE ================= */
   (function(){
